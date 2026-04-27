@@ -91,5 +91,8 @@ resource "aws_elasticache_replication_group" "redis" {
 }
 
 output "database_endpoint" { value = aws_db_instance.postgres.address }
-output "database_password_secret_value" { value = random_password.db.result sensitive = true }
+output "database_password_secret_value" {
+  value     = random_password.db.result
+  sensitive = true
+}
 output "redis_endpoint" { value = aws_elasticache_replication_group.redis.primary_endpoint_address }
