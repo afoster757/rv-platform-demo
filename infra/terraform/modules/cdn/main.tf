@@ -52,3 +52,4 @@ resource "aws_cloudfront_distribution" "site" {
 output "site_bucket" { value = aws_s3_bucket.site.bucket }
 output "content_bucket" { value = aws_s3_bucket.content.bucket }
 output "cloudfront_domain" { value = aws_cloudfront_distribution.site.domain_name }
+output "cloudfront_distribution_id" { value = aws_cloudfront_distribution.site.id }

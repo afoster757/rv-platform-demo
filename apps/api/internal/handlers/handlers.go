@@ -50,7 +50,7 @@ func (h *Handler) ValidateLicense(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			metrics.LicenseValidations.WithLabelValues("not_found").Inc()
-			writeJSON(w, http.StatusOK, models.LicenseValidationResponse{Valid: false, Reason: "license_not_found", Region: region()})
+			writeJSON(w, http.StatusOK, models.LicenseValidationResponse{Valid: false, Reason: "license_not_found", Region: h.Cfg.Region})
 			return
 		}
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "license_lookup_failed"})
@@ -59,7 +59,7 @@ func (h *Handler) ValidateLicense(w http.ResponseWriter, r *http.Request) {
 
 	if lic.Status != "active" || time.Now().After(lic.ExpiresAt) {
 		metrics.LicenseValidations.WithLabelValues("expired_or_inactive").Inc()
-		writeJSON(w, http.StatusOK, models.LicenseValidationResponse{Valid: false, Reason: "expired_or_inactive", Region: region()})
+		writeJSON(w, http.StatusOK, models.LicenseValidationResponse{Valid: false, Reason: "expired_or_inactive", Region: h.Cfg.Region})
 		return
 	}
 
@@ -73,7 +73,7 @@ func (h *Handler) ValidateLicense(w http.ResponseWriter, r *http.Request) {
 		Plan:      lic.Plan,
 		ExpiresAt: lic.ExpiresAt,
 		Features:  lic.Features,
-		Region:    region(),
+		Region:    h.Cfg.Region,
 	})
 }
 
@@ -106,7 +106,7 @@ func (h *Handler) RegisterDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]string{"status": "registered", "region": region()})
+	writeJSON(w, http.StatusCreated, map[string]string{"status": "registered", "region": h.Cfg.Region})
 }
 
 func (h *Handler) ContentEntitlements(w http.ResponseWriter, r *http.Request) {
@@ -139,11 +139,7 @@ func (h *Handler) ContentEntitlements(w http.ResponseWriter, r *http.Request) {
 			ExpiresInSec: 900,
 		})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": resp, "region": region()})
-}
-
-func region() string {
-	return "local-dfw"
+	writeJSON(w, http.StatusOK, map[string]any{"items": resp, "region": h.Cfg.Region})
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
