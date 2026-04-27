@@ -50,10 +50,14 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform init
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=rv-terraform-state-afoster" \
+            -backend-config="key=rv-platform-demo/${{ matrix.environment }}/terraform.tfstate" \
+            -backend-config="region=us-east-1"
 
       - name: Terraform validate
         run: terraform validate
 
       - name: Terraform plan
-        run: terraform plan
+        run: terraform plan -input=false

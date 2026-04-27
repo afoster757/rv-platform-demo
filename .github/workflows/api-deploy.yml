@@ -148,7 +148,8 @@ jobs:
       - name: Terraform plan
         run: |
           terraform plan \
-            -var="api_image=${{ needs.build-image.outputs.image_uri }}" \
+            -input=false \
+            -var="image_tag=${{ needs.build-image.outputs.image_uri }}" \
             -out=tfplan
 
       - name: Upload plan
