@@ -11,7 +11,9 @@ resource "aws_s3_bucket" "content" {
 
 resource "aws_s3_bucket_versioning" "content" {
   bucket = aws_s3_bucket.content.id
-  versioning_configuration { status = "Enabled" }
+  versioning_configuration {
+    status = "Enabled"
+  }
 }
 
 resource "aws_cloudfront_origin_access_control" "site" {
@@ -41,12 +43,21 @@ resource "aws_cloudfront_distribution" "site" {
     compress               = true
     forwarded_values {
       query_string = false
-      cookies { forward = "none" }
+      cookies {
+        forward = "none"
+      }
     }
   }
 
-  restrictions { geo_restriction { restriction_type = "none" } }
-  viewer_certificate { cloudfront_default_certificate = true }
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
 }
 
 output "site_bucket" { value = aws_s3_bucket.site.bucket }
