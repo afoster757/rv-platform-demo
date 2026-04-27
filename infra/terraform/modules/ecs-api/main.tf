@@ -1,13 +1,39 @@
-variable "name" { type = string }
-variable "environment" { type = string }
-variable "vpc_id" { type = string }
-variable "public_subnet_ids" { type = list(string) }
-variable "private_subnet_ids" { type = list(string) }
-variable "container_port" { type = number default = 8080 }
-variable "image_tag" { type = string default = "latest" }
-variable "database_url" { type = string sensitive = true }
-variable "redis_addr" { type = string }
-variable "content_cdn_base_url" { type = string }
+variable "name" { 
+  type = string 
+  }
+
+variable "environment" { 
+  type = string 
+  }
+
+variable "vpc_id" {
+  type = string 
+  }
+
+variable "public_subnet_ids" { 
+  type = list(string) 
+  }
+variable "private_subnet_ids" { 
+  type = list(string) 
+  }
+variable "container_port" { 
+  type = number
+  default = 8080
+  }
+variable "image_tag" { 
+  type = string 
+  default = "latest" 
+  }
+variable "database_url" { 
+  type = string 
+  sensitive = true
+  }
+variable "redis_addr" { 
+  type = string 
+  }
+variable "content_cdn_base_url" { 
+  type = string 
+  }
 
 resource "aws_ecr_repository" "api" {
   name                 = "${var.name}-${var.environment}-api"
