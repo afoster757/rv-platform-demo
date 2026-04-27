@@ -1,0 +1,32 @@
+{
+  "title": "RV Platform Demo - License API",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Valid License Checks",
+      "targets": [
+        { "expr": "sum(rate(license_validation_total{result=\"valid\"}[5m]))" }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 6 }
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP p95 Latency",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, route))" }
+      ],
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 6 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Request Rate by Route",
+      "targets": [
+        { "expr": "sum(rate(http_request_duration_seconds_count[5m])) by (route)" }
+      ],
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 6 }
+    }
+  ]
+}
