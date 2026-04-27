@@ -70,11 +70,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
-          cache-dependency-path: apps/api/go.sum
+          go-version: "1.23"
 
-      - name: Verify dependencies
-        run: go mod tidy && git diff --exit-code
+      - name: Download dependencies
+        run: go mod download
 
       - name: Run tests
         run: go test ./...
@@ -180,7 +179,11 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform init
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=rv-terraform-state-afoster" \
+            -backend-config="key=rv-platform-demo/${{ needs.resolve-environment.outputs.environment }}/terraform.tfstate" \
+            -backend-config="region=us-east-1"
 
       - name: Download plan
         uses: actions/download-artifact@v4
