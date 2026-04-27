@@ -18,17 +18,6 @@ variable "image_tag" {
   default = "latest"
 }
 
-variable "database_url" {
-  type      = string
-  sensitive = true
-  default   = "postgres://placeholder:placeholder@example.com:5432/rvdemo"
-}
-
-variable "redis_addr" {
-  type    = string
-  default = "placeholder.redis.example.com:6379"
-}
-
 variable "vpc_cidr" {
   type    = string
   default = "10.22.0.0/16"
