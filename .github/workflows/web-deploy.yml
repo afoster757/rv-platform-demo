@@ -107,7 +107,10 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform init
-        run: terraform init
+        run: terraform init \
+          -backend-config="bucket=rv-terraform-state-afoster" \
+          -backend-config="key=rv-platform-demo/$ENVIRONMENT/terraform.tfstate" \
+          -backend-config="region=us-east-1"
 
       - name: Terraform apply CDN infrastructure
         run: terraform apply -auto-approve
