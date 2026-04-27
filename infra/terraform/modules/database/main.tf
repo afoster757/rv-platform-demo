@@ -1,8 +1,22 @@
-variable "name" { type = string }
-variable "environment" { type = string }
-variable "vpc_id" { type = string }
-variable "private_subnet_ids" { type = list(string) }
-variable "allowed_security_group_ids" { type = list(string) }
+variable "name" {
+  type = string
+}
+
+variable "environment" {
+  type = string
+}
+
+variable "vpc_id" {
+  type = string
+}
+
+variable "private_subnet_ids" {
+  type = list(string)
+}
+
+variable "allowed_security_group_ids" {
+  type = list(string)
+}
 
 resource "aws_security_group" "db" {
   name        = "${var.name}-${var.environment}-db"
@@ -90,9 +104,15 @@ resource "aws_elasticache_replication_group" "redis" {
   transit_encryption_enabled = true
 }
 
-output "database_endpoint" { value = aws_db_instance.postgres.address }
+output "database_endpoint" {
+  value = aws_db_instance.postgres.address
+}
+
 output "database_password_secret_value" {
   value     = random_password.db.result
   sensitive = true
 }
-output "redis_endpoint" { value = aws_elasticache_replication_group.redis.primary_endpoint_address }
+
+output "redis_endpoint" {
+  value = aws_elasticache_replication_group.redis.primary_endpoint_address
+}

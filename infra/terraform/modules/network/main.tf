@@ -1,8 +1,22 @@
-variable "name" { type = string }
-variable "cidr" { type = string }
-variable "azs" { type = list(string) }
-variable "public_subnet_cidrs" { type = list(string) }
-variable "private_subnet_cidrs" { type = list(string) }
+variable "name" {
+  type = string
+}
+
+variable "cidr" {
+  type = string
+}
+
+variable "azs" {
+  type = list(string)
+}
+
+variable "public_subnet_cidrs" {
+  type = list(string)
+}
+
+variable "private_subnet_cidrs" {
+  type = list(string)
+}
 
 data "aws_availability_zones" "available" {}
 
@@ -80,6 +94,14 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-output "vpc_id" { value = aws_vpc.this.id }
-output "public_subnet_ids" { value = aws_subnet.public[*].id }
-output "private_subnet_ids" { value = aws_subnet.private[*].id }
+output "vpc_id" {
+  value = aws_vpc.this.id
+}
+
+output "public_subnet_ids" {
+  value = aws_subnet.public[*].id
+}
+
+output "private_subnet_ids" {
+  value = aws_subnet.private[*].id
+}
