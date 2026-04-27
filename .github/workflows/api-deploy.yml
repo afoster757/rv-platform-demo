@@ -138,7 +138,7 @@ jobs:
       - name: Terraform init
         run: terraform init \
           -backend-config="bucket=rv-terraform-state-afoster" \
-          -backend-config="key=rv-platform-demo/${{ env.ENVIRONMENT }}/terraform.tfstate" \
+          -backend-config="key=rv-platform-demo/$ENVIRONMENT/terraform.tfstate" \
           -backend-config="region=us-east-1"
 
       - name: Terraform validate
