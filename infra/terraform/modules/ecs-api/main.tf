@@ -117,6 +117,8 @@ resource "aws_ecs_task_definition" "api" {
       environment = [
         { name = "APP_ENV", value = var.environment },
         { name = "PORT", value = tostring(var.container_port) },
+        { name = "AWS_REGION", value = data.aws_region.current.name },
+        { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_ADDR", value = var.redis_addr },
         { name = "CONTENT_CDN_BASE_URL", value = var.content_cdn_base_url }
       ]

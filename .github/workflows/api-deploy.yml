@@ -136,10 +136,11 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform init
-        run: terraform init \
-          -backend-config="bucket=rv-terraform-state-afoster" \
-          -backend-config="key=rv-platform-demo/$ENVIRONMENT/terraform.tfstate" \
-          -backend-config="region=us-east-1"
+        run: |
+          terraform init \
+            -backend-config="bucket=rv-terraform-state-afoster" \
+            -backend-config="key=rv-platform-demo/${{ needs.resolve-environment.outputs.environment }}/terraform.tfstate" \
+            -backend-config="region=us-east-1"
 
       - name: Terraform validate
         run: terraform validate
