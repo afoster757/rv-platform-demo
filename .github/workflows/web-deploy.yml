@@ -1,0 +1,142 @@
+name: Web - Build and Deploy
+
+on:
+  push:
+    branches: ["develop", "staging", "main"]
+    paths:
+      - "apps/web/**"
+      - "infra/terraform/**"
+      - ".github/workflows/web-deploy.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  WEB_APP_DIR: apps/web
+
+jobs:
+  resolve-environment:
+    name: Resolve environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      terraform_dir: ${{ steps.env.outputs.terraform_dir }}
+      s3_bucket_output_name: web_bucket_name
+      cloudfront_output_name: cloudfront_distribution_id
+    steps:
+      - id: env
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENVIRONMENT="${{ inputs.environment }}"
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            ENVIRONMENT="prod"
+          elif [[ "${{ github.ref_name }}" == "staging" ]]; then
+            ENVIRONMENT="staging"
+          else
+            ENVIRONMENT="dev"
+          fi
+
+          echo "environment=${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
+          echo "terraform_dir=infra/terraform/environments/${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
+
+  build-web:
+    name: Build static website
+    runs-on: ubuntu-latest
+    needs: resolve-environment
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Build static site
+        env:
+          NEXT_PUBLIC_ENVIRONMENT: ${{ needs.resolve-environment.outputs.environment }}
+        run: npm run build
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-out-${{ needs.resolve-environment.outputs.environment }}
+          path: apps/web/out
+
+  deploy-web:
+    name: Deploy static site to S3 and CloudFront
+    runs-on: ubuntu-latest
+    needs: [resolve-environment, build-web]
+    environment: ${{ needs.resolve-environment.outputs.environment }}
+    defaults:
+      run:
+        working-directory: ${{ needs.resolve-environment.outputs.terraform_dir }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform apply CDN infrastructure
+        run: terraform apply -auto-approve
+
+      - name: Capture Terraform outputs
+        id: tfout
+        run: |
+          echo "bucket=$(terraform output -raw web_bucket_name)" >> "$GITHUB_OUTPUT"
+          echo "distribution_id=$(terraform output -raw cloudfront_distribution_id)" >> "$GITHUB_OUTPUT"
+
+      - name: Download web artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-out-${{ needs.resolve-environment.outputs.environment }}
+          path: /tmp/web-out
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync /tmp/web-out s3://${{ steps.tfout.outputs.bucket }} \
+            --delete \
+            --cache-control "public,max-age=300"
+
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ steps.tfout.outputs.distribution_id }} \
+            --paths "/*"
+
+      - name: Smoke test web
+        run: |
+          echo "Run environment-specific web smoke tests here."
+          echo "Example: curl -I https://www-${{ needs.resolve-environment.outputs.environment }}.example.com"
