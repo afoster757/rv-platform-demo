@@ -5,6 +5,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.70"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
   backend "s3" {}
 }
@@ -35,10 +39,15 @@ module "cdn" {
   environment = var.environment
 }
 
-# In a real production implementation, the database module would be connected to
-# the API service security group and DATABASE_URL would be supplied through AWS
-# Secrets Manager. For interview demo clarity, this root accepts database_url as
-# a sensitive variable so plans remain easy to inspect without provisioning RDS.
+module "database" {
+  source                     = "../../modules/database"
+  name                       = var.name
+  environment                = var.environment
+  vpc_id                     = module.network.vpc_id
+  private_subnet_ids         = module.network.private_subnet_ids
+  allowed_security_group_ids = [module.api.api_security_group_id]
+}
+
 module "api" {
   source               = "../../modules/ecs-api"
   name                 = var.name
@@ -47,7 +56,7 @@ module "api" {
   public_subnet_ids    = module.network.public_subnet_ids
   private_subnet_ids   = module.network.private_subnet_ids
   image_tag            = var.image_tag
-  database_url         = var.database_url
-  redis_addr           = var.redis_addr
+  database_url         = "postgres://rvdemo:${module.database.database_password_secret_value}@${module.database.database_endpoint}:5432/rvdemo"
+  redis_addr           = "${module.database.redis_endpoint}:6379"
   content_cdn_base_url = "https://${module.cdn.cloudfront_domain}/content"
 }
