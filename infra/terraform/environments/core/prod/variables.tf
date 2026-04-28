@@ -10,30 +10,25 @@ variable "name" {
 
 variable "environment" {
   type    = string
-  default = "staging"
-}
-
-variable "image_tag" {
-  type    = string
-  default = "latest"
+  default = "prod"
 }
 
 variable "vpc_cidr" {
   type    = string
-  default = "10.21.0.0/16"
+  default = "10.22.0.0/16"
 }
 
 variable "azs" {
   type    = list(string)
-  default = ["us-east-1a", "us-east-1b"]
+  default = ["us-east-1a", "us-east-1b", "us-east-1c"]
 }
 
 variable "public_subnet_cidrs" {
   type    = list(string)
-  default = ["10.21.1.0/24", "10.21.2.0/24"]
+  default = ["10.22.1.0/24", "10.22.2.0/24", "10.22.3.0/24"]
 }
 
 variable "private_subnet_cidrs" {
   type    = list(string)
-  default = ["10.21.11.0/24", "10.21.12.0/24"]
+  default = ["10.22.11.0/24", "10.22.12.0/24", "10.22.13.0/24"]
 }

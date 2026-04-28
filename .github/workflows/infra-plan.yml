@@ -32,15 +32,17 @@ env:
 
 jobs:
   plan:
-    name: Terraform plan
+    name: Plan ${{ matrix.stack }} / ${{ matrix.environment }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         environment: ${{ github.event_name == 'workflow_dispatch' && fromJson(format('["{0}"]', inputs.environment)) || fromJson('["dev", "staging", "prod"]') }}
+        stack: ["core", "api"]
     environment: ${{ matrix.environment }}
     defaults:
       run:
-        working-directory: infra/terraform/environments/${{ matrix.environment }}
+        working-directory: infra/terraform/environments/${{ matrix.stack }}/${{ matrix.environment }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,7 +60,7 @@ jobs:
         run: |
           terraform init \
             -backend-config="bucket=rv-terraform-state-afoster" \
-            -backend-config="key=rv-platform-demo/${{ matrix.environment }}/terraform.tfstate" \
+            -backend-config="key=rv-platform-demo/${{ matrix.environment }}/${{ matrix.stack }}/terraform.tfstate" \
             -backend-config="region=us-east-1"
 
       - name: Terraform validate

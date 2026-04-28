@@ -1,0 +1,153 @@
+name: Core Infrastructure
+
+on:
+  push:
+    branches: ["develop", "staging", "main"]
+    paths:
+      - "infra/terraform/environments/core/**"
+      - "infra/terraform/modules/network/**"
+      - "infra/terraform/modules/cdn/**"
+      - ".github/workflows/infra-core.yml"
+  pull_request:
+    branches: ["develop", "staging", "main"]
+    paths:
+      - "infra/terraform/environments/core/**"
+      - "infra/terraform/modules/network/**"
+      - "infra/terraform/modules/cdn/**"
+      - ".github/workflows/infra-core.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  resolve-environment:
+    name: Resolve environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      terraform_dir: ${{ steps.env.outputs.terraform_dir }}
+    steps:
+      - id: env
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENVIRONMENT="${{ inputs.environment }}"
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            ENVIRONMENT="prod"
+          elif [[ "${{ github.ref_name }}" == "staging" ]]; then
+            ENVIRONMENT="staging"
+          else
+            ENVIRONMENT="dev"
+          fi
+          echo "environment=${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
+          echo "terraform_dir=infra/terraform/environments/core/${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
+
+  plan:
+    name: Terraform plan
+    runs-on: ubuntu-latest
+    needs: resolve-environment
+    environment: ${{ needs.resolve-environment.outputs.environment }}
+    defaults:
+      run:
+        working-directory: ${{ needs.resolve-environment.outputs.terraform_dir }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=rv-terraform-state-afoster" \
+            -backend-config="key=rv-platform-demo/${{ needs.resolve-environment.outputs.environment }}/core/terraform.tfstate" \
+            -backend-config="region=us-east-1"
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        id: plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Post plan summary to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `#### Core infrastructure plan — \`${{ needs.resolve-environment.outputs.environment }}\`
+            \`terraform plan\` ran successfully. Review the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for the full diff.`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      - name: Upload plan artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-tfplan-${{ needs.resolve-environment.outputs.environment }}
+          path: ${{ needs.resolve-environment.outputs.terraform_dir }}/tfplan
+
+  apply:
+    name: Terraform apply
+    runs-on: ubuntu-latest
+    needs: [resolve-environment, plan]
+    if: github.event_name != 'pull_request'
+    environment: ${{ needs.resolve-environment.outputs.environment }}
+    defaults:
+      run:
+        working-directory: ${{ needs.resolve-environment.outputs.terraform_dir }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=rv-terraform-state-afoster" \
+            -backend-config="key=rv-platform-demo/${{ needs.resolve-environment.outputs.environment }}/core/terraform.tfstate" \
+            -backend-config="region=us-east-1"
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: core-tfplan-${{ needs.resolve-environment.outputs.environment }}
+          path: ${{ needs.resolve-environment.outputs.terraform_dir }}
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve tfplan
