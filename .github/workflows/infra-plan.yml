@@ -68,6 +68,6 @@ jobs:
         run: terraform plan -input=false
 
       - name: Terraform Delete
-        run: terraform delete
+        run: terraform destroy -auto-approve
         if: inputs.run_delete == true
         
