@@ -54,7 +54,7 @@ jobs:
           SHORT_SHA="${GITHUB_SHA::7}"
           echo "environment=${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
           echo "image_tag=${ENVIRONMENT}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-          echo "terraform_dir=infra/terraform/environments/${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
+          echo "terraform_dir=infra/terraform/environments/api/${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
 
   test:
     name: Test API
@@ -163,7 +163,7 @@ jobs:
         run: |
           terraform init \
             -backend-config="bucket=rv-terraform-state-afoster" \
-            -backend-config="key=rv-platform-demo/${{ needs.resolve-environment.outputs.environment }}/terraform.tfstate" \
+            -backend-config="key=rv-platform-demo/${{ needs.resolve-environment.outputs.environment }}/api/terraform.tfstate" \
             -backend-config="region=us-east-1"
 
       - name: Terraform validate
@@ -207,7 +207,7 @@ jobs:
         run: |
           terraform init \
             -backend-config="bucket=rv-terraform-state-afoster" \
-            -backend-config="key=rv-platform-demo/${{ needs.resolve-environment.outputs.environment }}/terraform.tfstate" \
+            -backend-config="key=rv-platform-demo/${{ needs.resolve-environment.outputs.environment }}/api/terraform.tfstate" \
             -backend-config="region=us-east-1"
 
       - name: Download plan

@@ -5,7 +5,6 @@ on:
     branches: ["develop", "staging", "main"]
     paths:
       - "apps/web/**"
-      - "infra/terraform/**"
       - ".github/workflows/web-deploy.yml"
   workflow_dispatch:
     inputs:
@@ -25,7 +24,6 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  WEB_APP_DIR: apps/web
 
 jobs:
   resolve-environment:
@@ -33,9 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.env.outputs.environment }}
-      terraform_dir: ${{ steps.env.outputs.terraform_dir }}
-      s3_bucket_output_name: web_bucket_name
-      cloudfront_output_name: cloudfront_distribution_id
+      core_terraform_dir: ${{ steps.env.outputs.core_terraform_dir }}
     steps:
       - id: env
         shell: bash
@@ -49,9 +45,8 @@ jobs:
           else
             ENVIRONMENT="dev"
           fi
-
           echo "environment=${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
-          echo "terraform_dir=infra/terraform/environments/${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
+          echo "core_terraform_dir=infra/terraform/environments/core/${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
 
   build-web:
     name: Build static website
@@ -86,13 +81,13 @@ jobs:
           path: apps/web/out
 
   deploy-web:
-    name: Deploy static site to S3 and CloudFront
+    name: Deploy static site to S3 and invalidate CloudFront
     runs-on: ubuntu-latest
     needs: [resolve-environment, build-web]
     environment: ${{ needs.resolve-environment.outputs.environment }}
     defaults:
       run:
-        working-directory: ${{ needs.resolve-environment.outputs.terraform_dir }}
+        working-directory: ${{ needs.resolve-environment.outputs.core_terraform_dir }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -106,20 +101,17 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform init
+      - name: Terraform init (read core state)
         run: |
           terraform init \
             -backend-config="bucket=rv-terraform-state-afoster" \
-            -backend-config="key=rv-platform-demo/${{ needs.resolve-environment.outputs.environment }}/terraform.tfstate" \
+            -backend-config="key=rv-platform-demo/${{ needs.resolve-environment.outputs.environment }}/core/terraform.tfstate" \
             -backend-config="region=us-east-1"
 
-      - name: Terraform apply CDN infrastructure
-        run: terraform apply -input=false -auto-approve
-
-      - name: Capture Terraform outputs
-        id: tfout
+      - name: Read core outputs
+        id: core
         run: |
-          echo "bucket=$(terraform output -raw web_bucket_name)" >> "$GITHUB_OUTPUT"
+          echo "bucket=$(terraform output -raw site_bucket)" >> "$GITHUB_OUTPUT"
           echo "distribution_id=$(terraform output -raw cloudfront_distribution_id)" >> "$GITHUB_OUTPUT"
 
       - name: Download web artifact
@@ -130,14 +122,14 @@ jobs:
 
       - name: Sync to S3
         run: |
-          aws s3 sync /tmp/web-out s3://${{ steps.tfout.outputs.bucket }} \
+          aws s3 sync /tmp/web-out s3://${{ steps.core.outputs.bucket }} \
             --delete \
             --cache-control "public,max-age=300"
 
       - name: Invalidate CloudFront
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id ${{ steps.tfout.outputs.distribution_id }} \
+            --distribution-id ${{ steps.core.outputs.distribution_id }} \
             --paths "/*"
 
       - name: Smoke test web
