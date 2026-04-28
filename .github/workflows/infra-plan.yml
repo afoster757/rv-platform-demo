@@ -16,6 +16,11 @@ on:
           - staging
           - prod
         default: dev
+      run_delete:
+        description: "Run TF Delete"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -61,3 +66,8 @@ jobs:
 
       - name: Terraform plan
         run: terraform plan -input=false
+
+      - name: Terraform Delete
+        run: terraform delete
+        if: inputs.run_delete == true
+        
