@@ -32,6 +32,7 @@ jobs:
     outputs:
       environment: ${{ steps.env.outputs.environment }}
       core_terraform_dir: ${{ steps.env.outputs.core_terraform_dir }}
+      api_terraform_dir: ${{ steps.env.outputs.api_terraform_dir }}
     steps:
       - id: env
         shell: bash
@@ -47,33 +48,49 @@ jobs:
           fi
           echo "environment=${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
           echo "core_terraform_dir=infra/terraform/environments/core/${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
+          echo "api_terraform_dir=infra/terraform/environments/api/${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
 
   read-api-url:
-    name: Read API endpoint from AWS
+    name: Read API CloudFront domain from Terraform state
     runs-on: ubuntu-latest
     needs: resolve-environment
     outputs:
-      api_base_url: ${{ steps.alb.outputs.api_base_url }}
+      api_base_url: ${{ steps.cf.outputs.api_base_url }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Read ALB DNS name
-        id: alb
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform init (read api state)
+        working-directory: ${{ needs.resolve-environment.outputs.api_terraform_dir }}
+        run: |
+          terraform init \
+            -backend-config="bucket=rv-terraform-state-afoster" \
+            -backend-config="key=rv-platform-demo/${{ needs.resolve-environment.outputs.environment }}/api/terraform.tfstate" \
+            -backend-config="region=us-east-1"
+
+      - name: Read API CloudFront domain
+        id: cf
+        working-directory: ${{ needs.resolve-environment.outputs.api_terraform_dir }}
         env:
           ENV: ${{ needs.resolve-environment.outputs.environment }}
         run: |
-          DNS=$(aws elbv2 describe-load-balancers \
-            --query "LoadBalancers[?LoadBalancerName=='rv-platform-demo-${ENV}-api'].DNSName" \
-            --output text 2>/dev/null || echo "")
-          if [[ -n "$DNS" && "$DNS" != "None" ]]; then
-            echo "api_base_url=http://${DNS}" >> "$GITHUB_OUTPUT"
+          DOMAIN=$(terraform output -raw api_cloudfront_domain 2>/dev/null || echo "")
+          if [[ -n "$DOMAIN" && "$DOMAIN" != "null" ]]; then
+            echo "api_base_url=https://${DOMAIN}" >> "$GITHUB_OUTPUT"
           else
             echo "api_base_url=http://localhost:8080" >> "$GITHUB_OUTPUT"
-            echo "::warning::API load balancer not found for env=${ENV}; falling back to localhost"
+            echo "::warning::api_cloudfront_domain output not found for env=${ENV}; falling back to localhost"
           fi
 
   build-web:
