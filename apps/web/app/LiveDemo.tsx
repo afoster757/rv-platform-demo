@@ -1,7 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-const API = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+// Empty string means "same origin" — site and API share one CloudFront domain.
+// Set NEXT_PUBLIC_API_BASE_URL=http://localhost:8080 for local development.
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 
 type DemoCase = {
   label: string;
@@ -17,7 +19,7 @@ const DEMOS: DemoCase[] = [
     description:
       'A ProPresenter install checks in at startup. License is active, plan returned with feature list and serving region.',
     fetch: () =>
-      fetch(`${API}/api/v1/license/validate`, {
+      fetch(`${API_BASE}/api/v1/license/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -34,7 +36,7 @@ const DEMOS: DemoCase[] = [
     description:
       'An expired key returns valid=false with a reason code. HTTP 200 keeps SLO error budgets accurate — this is a business result, not an error.',
     fetch: () =>
-      fetch(`${API}/api/v1/license/validate`, {
+      fetch(`${API_BASE}/api/v1/license/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -51,7 +53,7 @@ const DEMOS: DemoCase[] = [
     description:
       'Subscription tier verified against the database, then ProContent assets are returned with short-lived signed CloudFront URLs.',
     fetch: () =>
-      fetch(`${API}/api/v1/content/entitlements?license_key=RV-DEMO-1234`),
+      fetch(`${API_BASE}/api/v1/content/entitlements?license_key=RV-DEMO-1234`),
   },
   {
     label: 'Health + readiness probes',
@@ -60,8 +62,8 @@ const DEMOS: DemoCase[] = [
       'Liveness probe is always fast. Readiness probe checks the RDS connection — used by ECS health checks and the load balancer target group.',
     fetch: async () => {
       const [hz, rz] = await Promise.all([
-        fetch(`${API}/healthz`),
-        fetch(`${API}/readyz`),
+        fetch(`${API_BASE}/healthz`),
+        fetch(`${API_BASE}/readyz`),
       ]);
       const hzBody = await hz.json();
       const rzBody = await rz.json();
@@ -79,6 +81,12 @@ export default function LiveDemo() {
   const [states, setStates] = useState<CardState[]>(
     DEMOS.map(() => ({ status: 'idle', json: '' })),
   );
+  // Resolve the displayed URL at runtime so it shows the real CloudFront domain
+  // when API_BASE is empty (same-origin mode).
+  const [displayUrl, setDisplayUrl] = useState(API_BASE || '…');
+  useEffect(() => {
+    if (!API_BASE) setDisplayUrl(window.location.origin);
+  }, []);
 
   async function run(index: number) {
     setStates((prev) =>
@@ -97,7 +105,7 @@ export default function LiveDemo() {
       setStates((prev) =>
         prev.map((s, i) =>
           i === index
-            ? { status: 'error', json: `Connection failed: ${msg}\n\nCheck that the API is reachable at:\n${API}` }
+            ? { status: 'error', json: `Connection failed: ${msg}\n\nCheck that the API is reachable at:\n${displayUrl}` }
             : s,
         ),
       );
@@ -117,7 +125,7 @@ export default function LiveDemo() {
           </p>
           <div className="demo-api-url">
             <span className="demo-api-label">API</span>
-            <code style={{ background: 'none', padding: 0, color: 'inherit' }}>{API}</code>
+            <code style={{ background: 'none', padding: 0, color: 'inherit' }}>{displayUrl}</code>
           </div>
         </div>
 

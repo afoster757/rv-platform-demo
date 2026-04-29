@@ -1,14 +1,15 @@
 'use client';
 import { useState, useEffect } from 'react';
 
-const API = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+// Empty string means "same origin" — site and API share one CloudFront domain.
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 
 export default function RegionBadge() {
   const [region, setRegion] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/healthz`, { cache: 'no-store' })
+    fetch(`${API_BASE}/healthz`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => {
         setRegion(d.region ?? null);
