@@ -241,7 +241,7 @@ resource "aws_cloudfront_distribution" "site" {
 
   # /v1/* → ALB (all methods, no cache)
   ordered_cache_behavior {
-    path_pattern           = "/v1/*"
+    path_pattern           = "/api/*"
     target_origin_id       = "api-alb"
     viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
