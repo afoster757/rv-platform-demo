@@ -51,7 +51,7 @@ module "api" {
   private_subnet_ids   = data.terraform_remote_state.core.outputs.private_subnet_ids
   image_tag            = var.image_tag
   ecr_repository_url   = data.terraform_remote_state.core.outputs.ecr_repository_url
-  database_url         = "postgres://rvdemo:${module.database.database_password_secret_value}@${module.database.database_endpoint}:5432/rvdemo"
+  database_url         = "postgres://rvdemo:${urlencode(module.database.database_password_secret_value)}@${module.database.database_endpoint}:5432/rvdemo"
   redis_addr           = "${module.database.redis_endpoint}:6379"
   content_cdn_base_url = "https://${data.terraform_remote_state.core.outputs.cloudfront_domain}/content"
 }
