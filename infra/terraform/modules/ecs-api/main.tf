@@ -45,6 +45,11 @@ variable "content_cdn_base_url" {
   type = string
 }
 
+variable "name_suffix" {
+  type    = string
+  default = ""
+}
+
 resource "aws_ecs_cluster" "this" {
   name = "${var.name}-${var.environment}"
 }
@@ -124,7 +129,7 @@ resource "aws_cloudwatch_log_group" "api" {
 }
 
 resource "aws_iam_role" "task_execution" {
-  name = "${var.name}-${var.environment}-task-execution"
+  name = "${var.name}-${var.environment}${var.name_suffix}-task-execution"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{ Action = "sts:AssumeRole", Effect = "Allow", Principal = { Service = "ecs-tasks.amazonaws.com" } }]
