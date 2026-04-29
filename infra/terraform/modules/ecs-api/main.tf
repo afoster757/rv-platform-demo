@@ -28,6 +28,10 @@ variable "image_tag" {
   default = "latest"
 }
 
+variable "ecr_repository_url" {
+  type = string
+}
+
 variable "database_url" {
   type      = string
   sensitive = true
@@ -39,14 +43,6 @@ variable "redis_addr" {
 
 variable "content_cdn_base_url" {
   type = string
-}
-
-resource "aws_ecr_repository" "api" {
-  name                 = "${var.name}-${var.environment}-api"
-  image_tag_mutability = "MUTABLE"
-  image_scanning_configuration {
-    scan_on_push = true
-  }
 }
 
 resource "aws_ecs_cluster" "this" {
@@ -151,7 +147,7 @@ resource "aws_ecs_task_definition" "api" {
   container_definitions = jsonencode([
     {
       name      = "api"
-      image     = "${aws_ecr_repository.api.repository_url}:${var.image_tag}"
+      image     = "${var.ecr_repository_url}:${var.image_tag}"
       essential = true
       portMappings = [{ containerPort = var.container_port, protocol = "tcp" }]
       environment = [
@@ -200,5 +196,5 @@ resource "aws_ecs_service" "api" {
 }
 
 output "api_security_group_id" { value = aws_security_group.service.id }
-output "ecr_repository_url" { value = aws_ecr_repository.api.repository_url }
+output "ecr_repository_url" { value = var.ecr_repository_url }
 output "alb_dns_name" { value = aws_lb.api.dns_name }
