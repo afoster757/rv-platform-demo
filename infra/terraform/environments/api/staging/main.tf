@@ -106,6 +106,7 @@ module "api_secondary" {
   }
   name                 = var.name
   environment          = var.environment
+  name_suffix          = "-secondary"
   vpc_id               = module.network_secondary.vpc_id
   public_subnet_ids    = module.network_secondary.public_subnet_ids
   private_subnet_ids   = module.network_secondary.private_subnet_ids
@@ -116,7 +117,10 @@ module "api_secondary" {
   content_cdn_base_url = "https://${data.terraform_remote_state.core.outputs.cloudfront_domain}/content"
 }
 
-# ── API CLOUDFRONT (multi-region with origin failover) ─────
+# ── API CLOUDFRONT (HTTPS proxy → primary ALB) ─────────────
+# CloudFront origin groups do not support write methods (POST/PUT/PATCH/DELETE).
+# Regional failover for write traffic uses Route 53 health-check failover routing.
+# CloudFront here provides HTTPS termination to resolve browser mixed-content policy.
 
 resource "aws_cloudfront_distribution" "api" {
   enabled = true
@@ -133,28 +137,8 @@ resource "aws_cloudfront_distribution" "api" {
     }
   }
 
-  origin {
-    domain_name = module.api_secondary.alb_dns_name
-    origin_id   = "api-secondary-${var.secondary_region}"
-    custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "http-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
-    }
-  }
-
-  origin_group {
-    origin_id = "api-multiregion"
-    failover_criteria {
-      status_codes = [500, 502, 503, 504]
-    }
-    member { origin_id = "api-primary-${var.aws_region}" }
-    member { origin_id = "api-secondary-${var.secondary_region}" }
-  }
-
   default_cache_behavior {
-    target_origin_id       = "api-multiregion"
+    target_origin_id       = "api-primary-${var.aws_region}"
     viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
