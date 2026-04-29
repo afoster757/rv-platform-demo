@@ -25,3 +25,7 @@ output "site_bucket" {
 output "content_bucket" {
   value = module.cdn.content_bucket
 }
+
+output "ecr_repository_url" {
+  value = aws_ecr_repository.api.repository_url
+}
