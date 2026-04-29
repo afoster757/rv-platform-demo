@@ -26,7 +26,11 @@ func New(cfg config.Config, store *db.Store, redisClient *redis.Client) *Handler
 }
 
 func (h *Handler) Healthz(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "service": "rv-platform-demo-api"})
+	writeJSON(w, http.StatusOK, map[string]string{
+		"status":  "ok",
+		"service": "rv-platform-demo-api",
+		"region":  h.Cfg.Region,
+	})
 }
 
 func (h *Handler) Readyz(w http.ResponseWriter, r *http.Request) {

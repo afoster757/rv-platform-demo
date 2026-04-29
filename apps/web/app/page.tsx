@@ -1,4 +1,5 @@
 import LiveDemo from './LiveDemo';
+import RegionBadge from './RegionBadge';
 
 const CLIENTS = [
   'NASA', 'The White House', 'Walmart', 'Delta', 'Chick-fil-A', 'Fox Sports',
@@ -241,7 +242,10 @@ export default function Page() {
             </div>
           </div>
           <div className="footer-bottom">
-            <span>© {new Date().getFullYear()} Renewed Vision. All rights reserved. <em style={{ color: 'var(--text-dim)', fontStyle: 'normal' }}>— Platform demo for interview purposes.</em></span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <RegionBadge />
+              <span>© {new Date().getFullYear()} Renewed Vision. All rights reserved. <em style={{ color: 'var(--text-dim)', fontStyle: 'normal' }}>— Platform demo.</em></span>
+            </div>
             <div className="footer-legal">
               <a href="#">Privacy Policy</a>
               <a href="#">Terms of Service</a>

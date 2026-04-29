@@ -690,6 +690,29 @@ code {
 .footer-legal a:hover { color: var(--text-muted); }
 
 /* ============================================================
+   REGION BADGE
+   ============================================================ */
+.region-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.region-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+
+.region-sep {
+  color: var(--text-dim);
+}
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 1024px) {
